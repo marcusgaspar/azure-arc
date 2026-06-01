@@ -28,7 +28,7 @@ scope=""
 feature=""
 policy_definition_id=""
 assignment_name=""
-location="eastus"
+location=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -73,19 +73,15 @@ fi
 case "$feature" in
   ama)
     default_assignment_name="arc-enable-ama"
-    display_name="Enable Azure Monitor for Hybrid VMs with AMA"
     ;;
   sql-bpa)
     default_assignment_name="arc-sql-best-practices"
-    display_name="Configure SQL best practices assessment"
     ;;
   missing-updates)
     default_assignment_name="arc-missing-updates"
-    display_name="Configure periodic checking for missing system updates"
     ;;
   sa-benefits)
     default_assignment_name="arc-sa-benefits"
-    display_name="Activate Software Assurance benefits"
     ;;
   *)
     echo "Error: invalid --feature value '$feature'." >&2
@@ -104,26 +100,23 @@ if ! command -v az >/dev/null 2>&1; then
 fi
 
 if [[ -z "$policy_definition_id" ]]; then
-  if [[ "$display_name" == *"'"* ]]; then
-    echo "Error: feature display name contains unsupported characters; provide --policy-definition-id explicitly." >&2
-    exit 1
-  fi
-
-  policy_definition_id="$(az policy definition list --query "[?displayName=='$display_name'].id | [0]" -o tsv)"
-fi
-
-if [[ -z "$policy_definition_id" ]]; then
-  echo "Error: Could not resolve a policy definition ID for feature '$feature'." >&2
-  echo "Provide --policy-definition-id explicitly." >&2
+  echo "Error: --policy-definition-id is required for feature '$feature'." >&2
   exit 1
 fi
 
 echo "Creating/updating policy assignment '$assignment_name' for feature '$feature'..."
-az policy assignment create \
-  --name "$assignment_name" \
-  --scope "$scope" \
-  --policy "$policy_definition_id" \
-  --location "$location" \
+cmd=(
+  az policy assignment create
+  --name "$assignment_name"
+  --scope "$scope"
+  --policy "$policy_definition_id"
   --output table
+)
+
+if [[ -n "$location" ]]; then
+  cmd+=(--location "$location")
+fi
+
+"${cmd[@]}"
 
 echo "Done."

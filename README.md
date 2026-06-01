@@ -14,7 +14,8 @@ Scripts to create/enable Azure Policies for Azure Arc scenarios.
 ```bash
 ./scripts/assign-azure-arc-policy.sh \
   --scope /subscriptions/<subscription-id> \
-  --feature ama
+  --feature ama \
+  --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definition-id>
 ```
 
 You can also pass an explicit policy definition ID when needed:
@@ -32,5 +33,4 @@ Show help:
 ./scripts/assign-azure-arc-policy.sh --help
 ```
 
-> Note: Built-in policy display names can vary by environment/version.
-> For reliability, prefer passing `--policy-definition-id` explicitly.
+> Note: `--policy-definition-id` is required; the script does not perform display-name lookup.
