@@ -15,7 +15,8 @@ Features:
 Examples:
   ./scripts/assign-azure-arc-policy.sh \
     --scope /subscriptions/<subId> \
-    --feature ama
+    --feature ama \
+    --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definitionId>
 
   ./scripts/assign-azure-arc-policy.sh \
     --scope /subscriptions/<subId>/resourceGroups/<rg> \
