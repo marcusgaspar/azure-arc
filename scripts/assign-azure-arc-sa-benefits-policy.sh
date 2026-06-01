@@ -54,7 +54,7 @@ if ! command -v az >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "Creating/updating policy assignment '$assignment_name' for Azure Arc SA benefits..."
+echo "Creating policy assignment '$assignment_name' for Azure Arc SA benefits..."
 cmd=(
   az policy assignment create
   --name "$assignment_name"
