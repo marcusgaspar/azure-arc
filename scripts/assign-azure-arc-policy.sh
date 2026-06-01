@@ -71,6 +71,11 @@ if [[ -z "$scope" || -z "$feature" ]]; then
   exit 1
 fi
 
+if [[ -z "$policy_definition_id" ]]; then
+  echo "Error: --policy-definition-id is required." >&2
+  exit 1
+fi
+
 case "$feature" in
   ama)
     default_assignment_name="arc-enable-ama"
@@ -97,11 +102,6 @@ fi
 
 if ! command -v az >/dev/null 2>&1; then
   echo "Error: Azure CLI (az) is required." >&2
-  exit 1
-fi
-
-if [[ -z "$policy_definition_id" ]]; then
-  echo "Error: --policy-definition-id is required." >&2
   exit 1
 fi
 
