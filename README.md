@@ -18,7 +18,7 @@ Scripts to create/enable Azure Policies for Azure Arc scenarios.
   --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definition-id>
 ```
 
-You can also pass an explicit policy definition ID when needed:
+Pass an explicit policy definition ID (required):
 
 ```bash
 ./scripts/assign-azure-arc-policy.sh \

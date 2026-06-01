@@ -100,7 +100,7 @@ if ! command -v az >/dev/null 2>&1; then
 fi
 
 if [[ -z "$policy_definition_id" ]]; then
-  echo "Error: --policy-definition-id is required for feature '$feature'." >&2
+  echo "Error: --policy-definition-id is required." >&2
   exit 1
 fi
 
