@@ -73,7 +73,7 @@ fi
 case "$feature" in
   ama)
     default_assignment_name="arc-enable-ama"
-    display_name="Enable Azure Monitor for the machines"
+    display_name="Enable Azure Monitor for Hybrid VMs with AMA"
     ;;
   sql-bpa)
     default_assignment_name="arc-sql-best-practices"
@@ -104,6 +104,11 @@ if ! command -v az >/dev/null 2>&1; then
 fi
 
 if [[ -z "$policy_definition_id" ]]; then
+  if [[ "$display_name" == *"'"* ]]; then
+    echo "Error: feature display name contains unsupported characters; provide --policy-definition-id explicitly." >&2
+    exit 1
+  fi
+
   policy_definition_id="$(az policy definition list --query "[?displayName=='$display_name'].id | [0]" -o tsv)"
 fi
 

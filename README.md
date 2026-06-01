@@ -31,3 +31,6 @@ Show help:
 ```bash
 ./scripts/assign-azure-arc-policy.sh --help
 ```
+
+> Note: Built-in policy display names can vary by environment/version.
+> For reliability, prefer passing `--policy-definition-id` explicitly.
