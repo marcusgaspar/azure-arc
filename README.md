@@ -12,13 +12,13 @@ Scripts to create/assign Azure Policies for Azure Arc scenarios.
 
 ## Scripts
 
-| Script                                           | Description                                                 | Policy source                                                     |
-| ------------------------------------------------ | ----------------------------------------------------------- | ----------------------------------------------------------------- |
-| `assign-azure-arc-ama-policy.sh`                 | Enable Azure Monitor Agent on Arc-enabled servers           | Built-in (ID provided via parameter)                              |
-| `assign-azure-arc-sql-bpa-policy.sh`             | Enable SQL Server Best Practices Assessment                 | Built-in (ID provided via parameter)                              |
-| `assign-azure-arc-missing-updates-policy.sh`     | Periodic check for missing system updates                   | Built-in (ID provided via parameter)                              |
-| `assign-azure-arc-sa-benefits-policy.sh`         | Activate Software Assurance benefits on Windows Arc servers | **Custom** — created from `policy/arc-windows-server-license-sa/` |
-| `assign-azure-arc-dcr-dce-association-policy.sh` | Associate Windows Arc Machines with a DCR or DCE            | Built-in `c24c537f-2516-4c2f-aac5-2cd26baa3d26` (v2.4.0)          |
+| Script                                           | Description                                                 | Policy source                                                          |
+| ------------------------------------------------ | ----------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `assign-azure-arc-ama-policy.sh`                 | Enable Azure Monitor Agent on Arc-enabled servers           | Built-in initiative `2b00397d-c309-49c4-aa5a-f0b2c5bc6321` (hardcoded) |
+| `assign-azure-arc-sql-bpa-policy.sh`             | Enable SQL Server Best Practices Assessment                 | Built-in policy `f36de009-cacb-47b3-b936-9c4c9120d064` (hardcoded)     |
+| `assign-azure-arc-missing-updates-policy.sh`     | Periodic check for missing system updates                   | Built-in policy `bfea026e-043f-4ff4-9d1b-bf301ca7ff46` (hardcoded)     |
+| `assign-azure-arc-sa-benefits-policy.sh`         | Activate Software Assurance benefits on Windows Arc servers | **Custom** — created from `policy/arc-windows-server-license-sa/`      |
+| `assign-azure-arc-dcr-dce-association-policy.sh` | Associate Windows Arc Machines with a DCR or DCE            | Built-in policy `c24c537f-2516-4c2f-aac5-2cd26baa3d26` (v2.4.0)        |
 
 ## Custom policy definitions
 
@@ -35,29 +35,44 @@ Deploys a `licenseProfile` resource (`Microsoft.HybridCompute/machines/licensePr
 
 ## Usage examples
 
-### AMA policy assignment
+### AMA initiative assignment
+
+Assigns the built-in initiative "Enable Azure Monitor for Hybrid VMs with AMA" and automatically grants the managed identity the `Azure Connected Machine Resource Administrator`, `Monitoring Contributor`, and `Log Analytics Contributor` roles.
 
 ```bash
 ./scripts/assign-azure-arc-ama-policy.sh \
   --scope /subscriptions/<subscription-id> \
-  --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definition-id>
+  --location eastus \
+  --dcr-resource-id /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.Insights/dataCollectionRules/<dcr-name>
 ```
 
+Optional parameters: `--assignment-name <name>` (default: `arc-enable-ama`), `--effect <DeployIfNotExists|Disabled>` (default: `DeployIfNotExists`).
+
 ### SQL BPA policy assignment
+
+Assigns the built-in policy to enable SQL Server Best Practices Assessment on Arc-enabled servers. Automatically grants the managed identity the `Log Analytics Contributor` and `Monitoring Contributor` roles.
 
 ```bash
 ./scripts/assign-azure-arc-sql-bpa-policy.sh \
   --scope /subscriptions/<subscription-id>/resourceGroups/<resource-group> \
-  --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definition-id>
+  --location eastus \
+  --la-workspace-id /subscriptions/<subscription-id>/resourceGroups/<resource-group>/providers/Microsoft.OperationalInsights/workspaces/<workspace-name> \
+  --la-workspace-location eastus
 ```
 
+Optional parameters: `--is-enabled <true|false>` (default: `true`), `--assignment-name <name>` (default: `arc-sql-best-practices`), `--effect <DeployIfNotExists|Disabled>` (default: `DeployIfNotExists`).
+
 ### Missing updates policy assignment
+
+Assigns the built-in policy to configure periodic checking for missing system updates on Arc-enabled servers. Automatically grants the managed identity the `Azure Connected Machine Resource Administrator` role.
 
 ```bash
 ./scripts/assign-azure-arc-missing-updates-policy.sh \
   --scope /subscriptions/<subscription-id> \
-  --policy-definition-id /providers/Microsoft.Authorization/policyDefinitions/<definition-id>
+  --location eastus
 ```
+
+Optional parameters: `--assignment-name <name>` (default: `arc-missing-updates`), `--os-type <Windows|Linux>` (default: `Windows`), `--assessment-mode <AutomaticByPlatform|ImageDefault>` (default: `AutomaticByPlatform`).
 
 ### Software Assurance benefits (custom policy)
 
@@ -93,7 +108,7 @@ To target a Data Collection Endpoint instead:
   --resource-type Microsoft.Insights/dataCollectionEndpoints
 ```
 
-Optional parameters: `--assignment-name <name>` (default: `arc-win-dcr-association`), `--effect <effect>` (default: `DeployIfNotExists`).
+Optional parameters: `--assignment-name <name>` (default: `arc-win-dcr-association`), `--effect <DeployIfNotExists|Disabled>` (default: `DeployIfNotExists`).
 
 ---
 
