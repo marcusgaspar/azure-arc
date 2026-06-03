@@ -1,63 +1,69 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Built-in initiative: "Enable Azure Monitor for Hybrid VMs with AMA"
-INITIATIVE_DEFINITION_ID="/providers/microsoft.authorization/policysetdefinitions/2b00397d-c309-49c4-aa5a-f0b2c5bc6321"
+# Built-in policy: "Configure Windows Arc Machines to be associated with a
+# Data Collection Rule or a Data Collection Endpoint" (v2.4.0)
+POLICY_DEFINITION_ID="/providers/Microsoft.Authorization/policyDefinitions/c24c537f-2516-4c2f-aac5-2cd26baa3d26"
 
-# Roles required by the initiative's constituent policies
-ROLE_ARC_MACHINE_ADMIN="cd570a14-e51a-42ad-bac8-bafd67325302"   # Azure Connected Machine Resource Administrator
+# Roles required by the policy's DeployIfNotExists deployment
 ROLE_MONITORING_CONTRIBUTOR="749f88d5-cbae-40b8-bcfc-e573ddc772fa"
 ROLE_LOG_ANALYTICS_CONTRIBUTOR="92aaf0da-9dab-42b6-94a3-d43ce8d16293"
 
 usage() {
   cat <<'USAGE'
 Usage:
-  assign-azure-arc-ama-policy.sh \
+  assign-azure-arc-dcr-dce-association-policy.sh \
     --scope <scope> \
     --location <location> \
     --dcr-resource-id <id> \
+    [--resource-type <type>] \
     [--assignment-name <name>] \
     [--effect <effect>]
 
 Options:
-  --scope           Required. Scope for the initiative assignment (subscription or resource group resource ID).
-  --location        Required. Azure region for the initiative assignment managed identity.
-  --dcr-resource-id Required. Resource ID of the VMI Data Collection Rule to associate with Arc machines.
-  --assignment-name Name for the initiative assignment. Default: arc-enable-ama
-  --effect          Effect for all constituent policies. Allowed: DeployIfNotExists, Disabled. Default: DeployIfNotExists
+  --scope            Required. Scope for the policy assignment (subscription or resource group resource ID).
+  --location         Required. Azure region for the policy assignment managed identity.
+  --dcr-resource-id  Required. Resource ID of the Data Collection Rule (DCR) or Data Collection Endpoint (DCE).
+  --resource-type    Resource type of the target. Default: Microsoft.Insights/dataCollectionRules
+                     Use Microsoft.Insights/dataCollectionEndpoints for a DCE.
+  --assignment-name  Name for the policy assignment. Default: arc-win-dcr-association
+  --effect           Policy effect. Allowed: DeployIfNotExists, Disabled. Default: DeployIfNotExists
+
+Note: The 'listOfApplicableLocations' parameter uses the policy built-in default
+      covering all supported Azure regions.
 USAGE
 }
 
 scope=""
 location=""
 dcr_resource_id=""
-assignment_name="arc-enable-ama"
+resource_type="Microsoft.Insights/dataCollectionRules"
+assignment_name="arc-win-dcr-association"
 effect="DeployIfNotExists"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --scope)
-      [[ $# -gt 1 ]] || { echo "Error: --scope requires a value." >&2; usage; exit 1; }
       scope="$2"
       shift 2
       ;;
     --location)
-      [[ $# -gt 1 ]] || { echo "Error: --location requires a value." >&2; usage; exit 1; }
       location="$2"
       shift 2
       ;;
     --dcr-resource-id)
-      [[ $# -gt 1 ]] || { echo "Error: --dcr-resource-id requires a value." >&2; usage; exit 1; }
       dcr_resource_id="$2"
       shift 2
       ;;
+    --resource-type)
+      resource_type="$2"
+      shift 2
+      ;;
     --assignment-name)
-      [[ $# -gt 1 ]] || { echo "Error: --assignment-name requires a value." >&2; usage; exit 1; }
       assignment_name="$2"
       shift 2
       ;;
     --effect)
-      [[ $# -gt 1 ]] || { echo "Error: --effect requires a value." >&2; usage; exit 1; }
       effect="$2"
       shift 2
       ;;
@@ -85,24 +91,31 @@ if [[ "$effect" != "DeployIfNotExists" && "$effect" != "Disabled" ]]; then
   exit 1
 fi
 
+if [[ "$resource_type" != "Microsoft.Insights/dataCollectionRules" && \
+      "$resource_type" != "Microsoft.Insights/dataCollectionEndpoints" ]]; then
+  echo "Error: --resource-type must be 'Microsoft.Insights/dataCollectionRules' or 'Microsoft.Insights/dataCollectionEndpoints'." >&2
+  exit 1
+fi
+
 if ! command -v az >/dev/null 2>&1; then
   echo "Error: Azure CLI (az) is required." >&2
   exit 1
 fi
 
-# --- Step 1: Create initiative assignment with system-assigned managed identity ---
-echo "Creating initiative assignment '$assignment_name' for Azure Arc AMA..."
-echo "  Scope:          $scope"
-echo "  DCR Resource ID: $dcr_resource_id"
-echo "  Effect:         $effect"
+# --- Step 1: Create policy assignment with system-assigned managed identity ---
+echo "Creating policy assignment '$assignment_name'..."
+echo "  Scope:         $scope"
+echo "  DCR/DCE ID:    $dcr_resource_id"
+echo "  Resource type: $resource_type"
+echo "  Effect:        $effect"
 
 az policy assignment create \
   --name "$assignment_name" \
   --scope "$scope" \
-  --policy-set-definition "$INITIATIVE_DEFINITION_ID" \
+  --policy "$POLICY_DEFINITION_ID" \
   --location "$location" \
   --mi-system-assigned \
-  --params "{\"dcrResourceId\":{\"value\":\"$dcr_resource_id\"},\"effect\":{\"value\":\"$effect\"}}" \
+  --params "{\"effect\":{\"value\":\"$effect\"},\"dcrResourceId\":{\"value\":\"$dcr_resource_id\"},\"resourceType\":{\"value\":\"$resource_type\"}}" \
   --output table
 
 # --- Step 2: Retrieve the managed identity principal ID ---
@@ -115,14 +128,6 @@ principal_id=$(az policy assignment show \
 echo "Managed identity principal ID: $principal_id"
 
 # --- Step 3: Assign required roles to the managed identity ---
-echo "Assigning 'Azure Connected Machine Resource Administrator' role..."
-az role assignment create \
-  --role "$ROLE_ARC_MACHINE_ADMIN" \
-  --assignee-object-id "$principal_id" \
-  --assignee-principal-type ServicePrincipal \
-  --scope "$scope" \
-  --output table
-
 echo "Assigning 'Monitoring Contributor' role..."
 az role assignment create \
   --role "$ROLE_MONITORING_CONTRIBUTOR" \

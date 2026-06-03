@@ -1,0 +1,86 @@
+{
+  "mode": "Indexed",
+  "policyRule": {
+    "if": {
+      "allOf": [
+        {
+          "field": "type",
+          "equals": "Microsoft.HybridCompute/machines"
+        },
+        {
+          "field": "Microsoft.HybridCompute/machines/osName",
+          "equals": "Windows"
+        }
+      ]
+    },
+    "then": {
+      "effect": "[parameters('effect')]",
+      "details": {
+        "type": "Microsoft.HybridCompute/machines/licenseProfiles",
+        "name": "default",
+        "existenceCondition": {
+          "field": "Microsoft.HybridCompute/machines/licenseProfiles/softwareAssurance.softwareAssuranceCustomer",
+          "equals": true
+        },
+        "roleDefinitionIds": [
+          "/providers/Microsoft.Authorization/roleDefinitions/cd570a14-e51a-42ad-bac8-bafd67325302"
+        ],
+        "deployment": {
+          "properties": {
+            "mode": "incremental",
+            "parameters": {
+              "vmName": {
+                "value": "[field('name')]"
+              },
+              "location": {
+                "value": "[field('location')]"
+              }
+            },
+            "template": {
+              "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+              "contentVersion": "1.0.0.0",
+              "parameters": {
+                "vmName": {
+                  "type": "string"
+                },
+                "location": {
+                  "type": "string"
+                }
+              },
+              "resources": [
+                {
+                  "type": "Microsoft.HybridCompute/machines/licenseProfiles",
+                  "apiVersion": "2023-10-03-preview",
+                  "name": "[concat(parameters('vmName'), '/default')]",
+                  "location": "[parameters('location')]",
+                  "properties": {
+                    "softwareAssurance": {
+                      "softwareAssuranceCustomer": true
+                    }
+                  }
+                }
+              ],
+              "outputs": {
+                "licenseProfileId": {
+                  "type": "string",
+                  "value": "[resourceId('Microsoft.HybridCompute/machines/licenseProfiles', parameters('vmName'), 'default')]"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {
+    "effect": {
+      "type": "String",
+      "metadata": {
+        "displayName": "Effect",
+        "description": "Enable or disable the execution of the policy"
+      },
+      "allowedValues": ["DeployIfNotExists", "AuditIfNotExists", "Disabled"],
+      "defaultValue": "DeployIfNotExists"
+    }
+  }
+}
